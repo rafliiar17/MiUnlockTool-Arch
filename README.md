@@ -97,6 +97,19 @@ Encountering errors? Check our comprehensive error codes documentation:
   </a>
 </div>
 
+## 🧪 Tested Environment
+
+This tool has been successfully tested on:
+
+| Component | Specification |
+|-----------|--------------|
+| 🖥️ **Operating System** | Linux 6.17.3-3-cachyos |
+| 🐍 **Python Version** | Python 3.13.7 |
+| 📱 **Test Device** | Redmi Note 8 4/64 (GINKGO) |
+| 👤 **Tester** | @rafliiar17 |
+
+> ✅ **Status:** Confirmed working on the above configuration
+
 ## 🤝 Contributing
 
 Contributions are welcome! Feel free to:
