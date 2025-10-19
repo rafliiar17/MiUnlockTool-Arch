@@ -1,9 +1,56 @@
 #!/usr/bin/python
 
-version = "1.5.9"
+version = "1.1"
 
 import os
 import shutil
+import json
+import re
+import requests
+import hmac
+import random
+import binascii
+import urllib
+import hashlib
+import io
+import urllib.parse
+import time
+import sys
+import urllib.request
+import zipfile
+import webbrowser
+import platform
+import subprocess
+import stat
+import datetime
+import threading
+import termios
+import tty
+from urllib3.util.url import Url
+from base64 import b64encode, b64decode
+from Cryptodome.Cipher import AES
+from urllib.parse import urlparse, parse_qs, urlencode
+from colorama import init, Fore, Style
+from PIL import Image
+
+init(autoreset=True)
+
+# --- Color Definitions ---
+cg = Style.BRIGHT + Fore.GREEN
+cgg = Style.DIM
+cr = Fore.RED
+crr = Style.BRIGHT + Fore.RED
+cres = Style.RESET_ALL
+cy = Style.BRIGHT + Fore.YELLOW
+cb = Style.BRIGHT + Fore.CYAN
+p_ = cg + "\n" + "_"*56 +"\n"
+
+# --- Global Variables ---
+session = requests.Session()
+headers = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36"}
+ssecurity = ""
+nonce_val = ""
+location_url = ""
 
 def get_pip_command():
     if shutil.which("pip3"):
@@ -11,41 +58,28 @@ def get_pip_command():
     elif shutil.which("pip"):
         return "pip"
     else:
-        raise EnvironmentError("Could not find 'pip' or 'pip3' in your system !")
+        raise EnvironmentError("Could not find 'pip' or 'pip3' in your system!")
 
-for lib in ['Cryptodome', 'urllib3', 'requests', 'colorama']:
-    try:
-        __import__(lib)
-    except ImportError:
-        prefix = os.getenv("PREFIX", "")
-        pip_cmd = get_pip_command()
-        if lib == 'Cryptodome':
-            if "com.termux" in prefix:
-                cmd = 'pkg install python-pycryptodomex'
+def install_dependencies():
+    for lib in ['Cryptodome', 'urllib3', 'requests', 'colorama', 'Pillow']:
+        try:
+            __import__(lib) if lib != 'Pillow' else __import__('PIL')
+        except ImportError:
+            prefix = os.getenv("PREFIX", "")
+            pip_cmd = get_pip_command()
+            if lib == 'Cryptodome':
+                if "com.termux" in prefix:
+                    cmd = 'pkg install python-pycryptodomex'
+                else:
+                    cmd = f'{pip_cmd} install pycryptodomex'
+            elif lib == 'Pillow':
+                cmd = f'{pip_cmd} install Pillow'
             else:
-                cmd = f'{pip_cmd} install pycryptodomex'
-        else:
-            cmd = f'{pip_cmd} install {lib}'
-        os.system(cmd)
+                cmd = f'{pip_cmd} install {lib}'
+            print(f"{cy}Installing {lib}...{cres}")
+            os.system(cmd)
 
-import re, requests, json, hmac, random, binascii, urllib, hashlib, io, urllib.parse, time, sys, urllib.request, zipfile, webbrowser, platform, subprocess, shutil, stat, datetime, threading
-from urllib3.util.url import Url
-from base64 import b64encode, b64decode
-from Cryptodome.Cipher import AES
-from urllib.parse import urlparse, parse_qs, urlencode
-from colorama import init, Fore, Style
-
-init(autoreset=True)
-
-cg = Style.BRIGHT + Fore.GREEN
-cgg = Style.DIM
-cr = Fore.RED
-crr = Style.BRIGHT + Fore.RED
-cres = Style.RESET_ALL
-cy = Style.BRIGHT + Fore.YELLOW
-p_ = cg + "\n" + "_"*56 +"\n"
-session = requests.Session()
-headers = {"User-Agent": "XiaomiPCSuite"}
+install_dependencies()
 
 def check_for_update():
     try:
@@ -55,22 +89,77 @@ def check_for_update():
         if match:
             cloud_version = match.group(1)
             if version < cloud_version:
-                print(f"\nNew version {cloud_version} is available")
-                with open(__file__, "w", encoding="utf-8") as f:
-                    f.write(response.text)
-                    print(f"\n{cg}Updated successfully{cres}")
-                os.execv(sys.executable)
-    except Exception as e:
+                print(f"\n{cy}New version {cloud_version} is available!{cres}")
+    except Exception:
         pass
 
-if '1' in sys.argv:
-    pass
-else:
-    print(cgg + f"\n[V{version}] For issues or feedback:\n- GitHub: github.com/offici5l/MiUnlockTool/issues\n- Telegram: t.me/Offici5l_Group\n" + cres)
+if '1' not in sys.argv:
+    print(cgg + f"\n[V{version}] MiUnlockTool Linux{cres}")
     check_for_update()
 
 print(p_)
 
+# --- Safe Input Function with Keyboard Navigation Error Handling ---
+def safe_input(prompt):
+    """
+    Safe input function that handles special characters from arrow keys
+    and other control characters that might appear when typing in terminal.
+    """
+    print(prompt, end='', flush=True)
+    
+    # Save original terminal settings
+    try:
+        fd = sys.stdin.fileno()
+        old_settings = termios.tcgetattr(fd)
+    except:
+        # If unable to configure terminal (e.g., on Windows), use regular input
+        return input()
+    
+    try:
+        # Set terminal to raw mode
+        tty.setraw(sys.stdin.fileno())
+        
+        input_text = ""
+        while True:
+            char = sys.stdin.read(1)
+            
+            # Handle special characters
+            if char == '\x03':  # Ctrl+C
+                print("^C")
+                raise KeyboardInterrupt
+            elif char == '\x1b':  # Start of escape sequence (like arrow keys)
+                # Read next 2 characters to complete escape sequence
+                next_chars = sys.stdin.read(2)
+                if next_chars == '[A':  # Up arrow
+                    continue
+                elif next_chars == '[B':  # Down arrow
+                    continue
+                elif next_chars == '[C':  # Right arrow
+                    continue
+                elif next_chars == '[D':  # Left arrow
+                    continue
+                else:
+                    continue  # Ignore other escape sequences
+            elif char == '\r' or char == '\n':  # Enter
+                print()  # Move to new line
+                break
+            elif ord(char) == 127:  # Backspace
+                if input_text:
+                    input_text = input_text[:-1]
+                    # Delete character from display
+                    sys.stdout.write('\b \b')
+                    sys.stdout.flush()
+            elif char.isprintable():
+                input_text += char
+                sys.stdout.write(char)
+                sys.stdout.flush()
+        
+        return input_text
+    finally:
+        # Restore original terminal settings
+        termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+
+# --- Fastboot/Platform-Tools Setup ---
 s = platform.system()
 if s == "Linux" and os.path.exists("/data/data/com.termux"):
     up = os.path.join(os.getenv("PREFIX", ""), "bin", "miunlock")
@@ -96,7 +185,7 @@ else:
         dir = os.path.dirname(__file__)
         fp = os.path.join(dir, "platform-tools")
         if not os.path.exists(fp):
-            print("\ndownload platform-tools...\n")
+            print("\ndownloading platform-tools...\n")
             url = f"https://dl.google.com/android/repository/platform-tools-latest-{s}.zip"
             cd = os.path.join(os.path.dirname(__file__))
             fp = os.path.join(cd, os.path.basename(url))
@@ -110,139 +199,252 @@ else:
             st = os.stat(cmd)
             os.chmod(cmd, st.st_mode | stat.S_IEXEC)
 
+# --- Data File Setup ---
 config_dir = os.environ.get("XDG_CONFIG_HOME", os.path.join(os.path.expanduser("~"), ".config"))
 data_dir = os.path.join(config_dir, "miunlocktool")
 os.makedirs(data_dir, exist_ok=True)
 datafile = os.path.join(data_dir, "miunlockdata.json")
 
-while os.path.isfile(datafile):
-    try:
-        with open(datafile, "r") as file:
-            data = json.load(file)
-        if '1' in sys.argv:
-            break
-        elif data and data.get("login") == "ok":
-            choice = input(f"\nYou are already logged in with account uid: {data['uid']}\n{cg}Press Enter to continue\n{cgg}(to log out, type 2 and press Enter){cres}\n").strip().lower()
-            if choice == "2":
-                os.remove(datafile)
-            else:
-                break
+def save_data(data):
+    with open(datafile, "w") as file:
+        json.dump(data, file, indent=2)
+
+def load_data():
+    if os.path.exists(datafile):
+        try:
+            with open(datafile, "r") as file:
+                return json.load(file)
+        except (json.JSONDecodeError, FileNotFoundError):
+            return {}
+    return {}
+
+# --- New Login Logic ---
+def get_browser_session():
+    """Guides user to get session data from browser"""
+    global ssecurity, nonce_val, location_url
+    
+    print(f"\n{cr}No valid session found or session has expired.{cres}")
+    print(f"{cy}We need to create a new session using your browser.{cres}\n")
+    
+    data = load_data()
+    if "user" not in data:
+        data["user"] = safe_input("Xiaomi Account (Id/Email/Phone): ")
+        save_data(data)
+    if "pwd" not in data:
+        data["pwd"] = safe_input("Password: ")
+        save_data(data)
+    
+    # Fixed login URL as requested
+    login_url = 'https://account.xiaomi.com/pass/serviceLogin?sid=unlockApi&checkSafeAddress=true&passive=false&hidden=false'
+    
+    print(f"\n{cg}Step 1: Login in Browser{cres}")
+    print(f"Please follow these steps carefully:")
+    print(f"1. Open your browser and visit the following link:")
+    print(f"   {cy}{login_url}{cres}")
+    print(f"2. Sign in to your Xiaomi account.")
+    print(f"3. If there's a captcha, complete it.")
+    print(f"4. After successful login, the page will be redirected.")
+    print(f"5. Keep the browser tab open after login.")
+    
+    print(f"\n{cg}Step 2: Copy Cookies from Browser{cres}")
+    print(f"Now we need to extract session data from your browser.")
+    print(f"1. In the browser tab where you logged in, press F12 to open Developer Tools.")
+    print(f"2. Go to the 'Network' tab.")
+    print(f"3. Copy this link {login_url} to browser")
+    print(f"4. Look for ServiceLogin?sid ")
+    print(f"5. In the 'Headers' section, look for request header -> 'Cookie'.")
+    print(f"6. Copy the ENTIRE cookie string and paste it below.\n")
+    
+    cookie_string = safe_input(f"{cgg}Paste the ENTIRE cookie string here:\n{cres}>> ").strip()
+    
+    if not cookie_string:
+        print(f"{cr}Cookie string cannot be empty.{cres}")
+        return False
+        
+    # Parse cookie string
+    cookies = {}
+    for item in cookie_string.split(';'):
+        if '=' in item:
+            key, value = item.strip().split('=', 1)
+            cookies[key] = value
+    
+    # Extract required cookies
+    required_cookies = ["passToken", "serviceToken", "userId", "deviceId"]
+    missing_cookies = []
+    
+    for cookie in required_cookies:
+        if cookie in cookies:
+            data[cookie] = cookies[cookie]
         else:
-            os.remove(datafile)
-    except PermissionError:
-        os.remove(datafile)
-    except json.JSONDecodeError:
-        os.remove(datafile)
-
-def remove(*keys):
-    print(f"\n{cr}invalid {keys[0] if len(keys) == 1 else ' or '.join(keys)}{cres}\n")
-    with open(datafile, "r+") as file:
-        data = json.load(file)
-        for key in keys:
-            data.pop(key, None)
-        file.seek(0)
-        json.dump(data, file, indent=2)
-        file.truncate()
-    os.execv(sys.executable, [sys.executable] + sys.argv + ['1'])
-
-try:
-    with open(datafile, "r+") as file:
-        data = json.load(file)
-except FileNotFoundError:
-    data = {}
-    with open(datafile, 'w') as file:
-        json.dump(data, file)
-
-def save(data, path):
-    with open(path, "w") as file:
-        json.dump(data, file, indent=2)
-
-if "user" not in data:
-    data["user"] = input("Xiaomi Account\nId or Email or Phone(in international format)\n : ")
-    sys.stdout.write("\033[F\033[K\033[F\033[K\033[F\033[K")
-    sys.stdout.flush()
-    save(data, datafile)
-
-if "pwd" not in data:
-    data["pwd"] = input("Enter password: ")
-    sys.stdout.write("\033[F\033[K")
-    sys.stdout.flush()
-    save(data, datafile)
-
-if "wb_id" not in data:
-    input(f"\n{Fore.CYAN}Notice:\nIf logged in with any account in your default browser,\nplease log out before pressing Enter.\n\n{cres}{cg}Press Enter{cres} to open confirmation page, \n copy link after seeing {Fore.CYAN}{Style.BRIGHT}\"R\":\"\",\"S\":\"OK\"{Style.RESET_ALL}, \n  and return here\n\n")
-    conl = 'https://account.xiaomi.com/pass/serviceLogin?sid=unlockApi&checkSafeAddress=true&passive=false&hidden=false'
-    if s == "Linux":
-        os.system("xdg-open '" + conl + "'")
+            missing_cookies.append(cookie)
+    
+    if missing_cookies:
+        print(f"{cr}Required cookies missing: {', '.join(missing_cookies)}{cres}")
+        print(f"{cy}Make sure you copied the ENTIRE cookie string.{cres}")
+        return False
+        
+    # Extract deviceId as wb_id
+    data["wb_id"] = data.get("deviceId", "")
+    
+    # Get nonce and _ssign from redirect URL
+    print(f"\n{cgg}Now we need the redirect URL to get nonce and _ssign values.{cres}")
+    print(f"If you're still on the page after login, check the address bar.")
+    print(f"If not, you can find it in the Network tab as a request to 'unlock.update.miui.com/sts'")
+    redirect_url = safe_input(f"\n{cgg}Please copy the redirect URL or leave empty if not available:\n{cres}>> ").strip()
+    
+    if redirect_url and "unlock.update.miui.com/sts" in redirect_url:
+        parsed = urlparse(redirect_url)
+        params = parse_qs(parsed.query)
+        data["nonce"] = params.get('nonce', [None])[0]
+        data["_ssign"] = params.get('_ssign', [None])[0]
     else:
-        webbrowser.open(conl)
-    time.sleep(2)
-    wb_id = parse_qs(urlparse(input("Enter Link: ")).query).get('d', [None])[0]
-    if wb_id is None:
-        print("\n\nInvalid link\n")
-        os.execv(sys.executable, [sys.executable] + sys.argv + ['1'])
-    data["wb_id"] = wb_id
-    save(data, datafile)
+        # If no redirect URL, we'll try to get nonce and _ssign later
+        data["nonce"] = None
+        data["_ssign"] = None
+    
+    save_data(data)
+    
+    print(f"\n{cg}Step 3: Validating Session...{cres}")
+    
+    # Make sure all required data is present before continuing
+    if not all([data.get("wb_id"), data.get("passToken"), data.get("serviceToken"), data.get("userId")]):
+        print(f"{cr}Session data is incomplete. Cannot continue.{cres}")
+        return False
+    
+    session.cookies.set('deviceId', data["wb_id"], domain='.account.xiaomi.com')
+    session.cookies.set('passToken', data["passToken"], domain='.account.xiaomi.com')
+    session.cookies.set('serviceToken', data["serviceToken"], domain='.xiaomi.com')
+    session.cookies.set('userId', data["userId"], domain='.account.xiaomi.com')
+    
+    try:
+        resp = session.get(
+            "https://account.xiaomi.com/pass/serviceLogin?sid=unlockApi&_json=true&passive=true&hidden=true",
+            headers=headers
+        )
+        result = json.loads(resp.text.replace("&&&START&&&", ""))
+        
+        if "ssecurity" in result and "location" in result:
+            ssecurity = result["ssecurity"]
+            nonce_val = result["nonce"]
+            location_url = result["location"]
+            
+            # Update nonce and _ssign if they were missing
+            if not data.get("nonce"):
+                data["nonce"] = nonce_val
+            if not data.get("_ssign"):
+                # Try to extract _ssign from location URL
+                parsed = urlparse(location_url)
+                params = parse_qs(parsed.query)
+                data["_ssign"] = params.get('_ssign', [None])[0]
+            
+            data["login"] = "ok"
+            data["uid"] = result["userId"]
+            save_data(data)
+            
+            print(f"{cg}✓ Session created and validated successfully!{cres}")
+            return True
+        else:
+            print(f"{cr}Session validation failed. Server response:{cres}")
+            print(json.dumps(result, indent=2))
+            for key in ["wb_id", "passToken", "serviceToken", "userId", "nonce", "_ssign", "login"]:
+                data.pop(key, None)
+            save_data(data)
+            return False
+            
+    except Exception as e:
+        print(f"{cr}An error occurred during validation: {e}{cres}")
+        return False
 
-user, pwd, wb_id = (data.get(key, "") for key in ["user", "pwd", "wb_id"])
+def validate_saved_session():
+    """Checks if the saved session is still active"""
+    global ssecurity, nonce_val, location_url
+    
+    data = load_data()
+    required_keys = ["wb_id", "passToken", "serviceToken", "userId", "login"]
+    
+    if not all(key in data for key in required_keys) or data.get("login") != "ok":
+        return False
+        
+    print(f"{cgg}Found saved session for uid: {data.get('uid')}. Validating...{cres}")
+    
+    session.cookies.set('deviceId', data["wb_id"], domain='.account.xiaomi.com')
+    session.cookies.set('passToken', data["passToken"], domain='.account.xiaomi.com')
+    session.cookies.set('serviceToken', data["serviceToken"], domain='.xiaomi.com')
+    session.cookies.set('userId', data["userId"], domain='.account.xiaomi.com')
+    
+    try:
+        resp = session.get(
+            "https://account.xiaomi.com/pass/serviceLogin?sid=unlockApi&_json=true&passive=true&hidden=true",
+            headers=headers
+        )
+        result = json.loads(resp.text.replace("&&&START&&&", ""))
+        
+        if "ssecurity" in result and "location" in result:
+            ssecurity = result["ssecurity"]
+            nonce_val = result["nonce"]
+            location_url = result["location"]
+            print(f"{cg}✓ Saved session is valid!{cres}")
+            return True
+        else:
+            print(f"{cr}Saved session has expired or is invalid.{cres}")
+            data["login"] = "invalid"
+            save_data(data)
+            return False
+    except Exception as e:
+        print(f"{cr}Error validating saved session: {e}{cres}")
+        return False
 
-datav = data
+def prepare_unlock_session():
+    """
+    Prepares the session for the unlock API by visiting the 'location' URL.
+    This is a crucial step to get the correct serviceToken for the unlock server.
+    """
+    global ssecurity, nonce_val
+    
+    print(f"{cgg}Preparing session for unlock API...{cres}")
+    if not ssecurity or not nonce_val or not location_url:
+        print(f"{cr}Missing ssecurity, nonce, or location URL. Cannot prepare session.{cres}")
+        return False
 
-def add_email(SetEmail):
-    input(f"\n{cr}Failed to get passToken !{cres}\n\nThe account is not linked to an email.\n{cg}Press Enter{cres} to open the email adding page.\nAfter successfully adding your email, return here")
-    if s == "Linux":
-        os.system("xdg-open '" + SetEmail + "'")
-    else:
-        webbrowser.open(SetEmail)
-    time.sleep(2)
-    input(f"\nIf email added successfully, {cg}press Enter{cres} to continue\n")
-    os.execv(sys.executable, [sys.executable] + sys.argv + ['1'])
+    try:
+        client_sign = b64encode(hashlib.sha1(f"nonce={nonce_val}".encode("utf-8") + b"&" + ssecurity.encode("utf-8")).digest())
+        full_location_url = location_url + "&clientSign=" + urllib.parse.quote_plus(client_sign)
+        
+        response = session.get(full_location_url, headers=headers)
+        
+        # The response to this request sets the correct cookies for the unlock server
+        if 'serviceToken' in session.cookies:
+            print(f"{cg}✓ Unlock session prepared successfully!{cres}")
+            return True
+        else:
+            print(f"{cr}Failed to get serviceToken for unlock server.{cres}")
+            print(f"Response status: {response.status_code}")
+            print(f"Response headers: {response.headers}")
+            return False
+            
+    except Exception as e:
+        print(f"{cr}An error occurred while preparing unlock session: {e}{cres}")
+        return False
 
-def postv(sid):
-    return json.loads(session.post(f"https://account.xiaomi.com/pass/serviceLoginAuth2?sid={sid}&_json=true&passive=true&hidden=true", data={"user": user, "hash": hashlib.md5(pwd.encode()).hexdigest().upper()}, headers=headers, cookies={"deviceId": str(wb_id)}).text.replace("&&&START&&&", ""))
+# --- Main Execution Flow ---
+if not validate_saved_session():
+    if not get_browser_session():
+        print(f"\n{crr}Failed to establish a valid session. Exiting.{cres}")
+        exit(1)
 
-data = postv("unlockApi")
+# After getting a valid base session, prepare it for the unlock API
+if not prepare_unlock_session():
+    print(f"\n{crr}Failed to prepare session for unlock. Exiting.{cres}")
+    exit(1)
 
-if data["code"] == 70016:
-    remove("user", "pwd")
+data = load_data()
+print(f"\n{cg}AccountInfo:{cres}\nid: {data['uid']}")
 
-if data["securityStatus"] == 4 and "notificationUrl" in data and "bizType=SetEmail" in data["notificationUrl"]:
-    add_email(data["notificationUrl"])
-
-if data["securityStatus"] == 16:
-    p = postv("passport")
-    if p["securityStatus"] == 4 and "notificationUrl" in p and "bizType=SetEmail" in p["notificationUrl"]:
-        add_email(p["notificationUrl"])
-    elif "passToken" not in p:
-         print(f"\n{cr}Failed to get passToken !{cres}\n")
-         exit()
-    data = json.loads(requests.get("https://account.xiaomi.com/pass/serviceLogin?sid=unlockApi&_json=true&passive=true&hidden=true", headers=headers, cookies={'passToken': p['passToken'], 'userId': str(p['userId']), 'deviceId': parse_qs(urlparse(p['location']).query)['d'][0]}).text.replace("&&&START&&&", ""))
-
-if "notificationUrl" in data:
-    print('\nnotificationUrl:\n')
-    exit(data["notificationUrl"])
-
-ssecurity, nonce, location = data["ssecurity"], data["nonce"], data["location"]
-
-cookies = {cookie.name: cookie.value for cookie in session.get(location + "&clientSign=" + urllib.parse.quote_plus(b64encode(hashlib.sha1(f"nonce={nonce}".encode("utf-8") + b"&" + ssecurity.encode("utf-8")).digest())), headers=headers).cookies}
-
-if 'serviceToken' not in cookies:
-    print(f"\n{cr}Failed to get serviceToken.{cres}")
-    remove("wb_id")
-
-if "login" not in datav:
-    datav["login"] = "ok"
-    if "uid" not in datav:
-        datav["uid"] = data['userId']
-    save(datav, datafile)
-    print(f"\n\n{cg}Login successful! Login saved.{cres}")
-
-region = json.loads(requests.get("https://account.xiaomi.com/pass/user/login/region?", headers=headers, cookies={'passToken': data['passToken'], 'userId': str(data['userId']), 'deviceId': parse_qs(urlparse(data['location']).query)['d'][0]}).text.replace("&&&START&&&", ""))['data']['region']
-
-print(f"\n{cg}AccountInfo:{cres}\nid: {data['userId']}\nregion: {region}")
+# --- Region and Unlock Server Setup ---
+region = json.loads(requests.get("https://account.xiaomi.com/pass/user/login/region?", headers=headers, cookies={'passToken': data['passToken'], 'userId': str(data['userId']), 'deviceId': data['wb_id']}).text.replace("&&&START&&&", ""))['data']['region']
+print(f"region: {region}")
 
 region_config = json.loads(requests.get("https://account.xiaomi.com/pass2/config?key=register").text.replace("&&&START&&&", ""))['regionConfig']
-
 for key, value in region_config.items():
     if 'region.codes' in value and region in value['region.codes']:
         region = value['name'].lower()
@@ -254,18 +456,13 @@ for arg in sys.argv:
         break
 
 g = "unlock.update.intl.miui.com"
+if region == "china": url = g.replace("intl.", "")
+elif region == "india": url = f"in-{g}"
+elif region == "russia": url = f"ru-{g}"
+elif region == "europe": url = f"eu-{g}"
+else: url = g
 
-if region == "china":
-    url = g.replace("intl.", "")
-elif region == "india":
-    url = f"in-{g}"
-elif region == "russia":
-    url = f"ru-{g}"
-elif region == "europe":
-    url = f"eu-{g}"
-else:
-    url = g
-
+# --- Fastboot Device Detection ---
 def read_stream(stream, output_list, process, restart_flag):
     try:
         for line in iter(stream.readline, ''):
@@ -283,91 +480,111 @@ def CheckB(cmd, var_name, *fastboot_args):
     while True:
         process = subprocess.Popen([cmd] + list(fastboot_args), stdout=subprocess.PIPE, stderr=subprocess.PIPE, bufsize=1, universal_newlines=True)
         stdout_lines, stderr_lines, restart_flag = [], [], [False]
-
         threading.Thread(target=read_stream, args=(process.stdout, stdout_lines, process, restart_flag)).start()
         threading.Thread(target=read_stream, args=(process.stderr, stderr_lines, process, restart_flag)).start()
-
         try:
             process.wait()
         except subprocess.SubprocessError as e:
             print(f"Error while executing process: {e}")
             return None
-
         if restart_flag[0]:
             time.sleep(2)
             sys.stdout.write('\r\033[K')
             continue
-        
         print(f"\rFetching '{var_name}' — please wait...", end='', flush=True)
-
         lines = [line.split(f"{var_name}:")[1].strip() for line in stderr_lines + stdout_lines if f"{var_name}:" in line]
-        if len(lines) > 1:
-            return "".join(lines)
+        if len(lines) > 1: return "".join(lines)
         return lines[0] if lines else None
 
 [print(char, end='', flush=True) or time.sleep(0.01) for char in "\nEnsure you're in Bootloader mode (fastboot mode)\n\n"]
 
-unlocked = None
-product = None
-SoC = None
-token = None
-
+unlocked, product, SoC, token = None, None, None, None
 while unlocked is None or product is None or SoC is None or token is None:
-    if unlocked is None:
-        unlocked = CheckB(cmd, "unlocked", "getvar", "unlocked")
-    if product is None:
-        product = CheckB(cmd, "product", "getvar", "product")
+    if unlocked is None: unlocked = CheckB(cmd, "unlocked", "getvar", "unlocked")
+    if product is None: product = CheckB(cmd, "product", "getvar", "product")
     if token is None:
         token = CheckB(cmd, "token", "oem", "get_token")
-        if token:
-            SoC = "Mediatek"
+        if token: SoC = "Mediatek"
         else:
             token = CheckB(cmd, "token", "getvar", "token")
-            if token:
-                SoC = "Qualcomm"
+            if token: SoC = "Qualcomm"
 
 sys.stdout.write('\r\033[K')
-
 print(f"\n{cg}DeviceInfo:{cres}\nunlocked: {unlocked}\nSoC: {SoC}\nproduct: {product}\ntoken: {token}\n")
 
+# --- Unlock Data Preparation ---
 class RetrieveEncryptData:
     def add_nonce(self):
-        r = RetrieveEncryptData("/api/v2/nonce", {"r":''.join(random.choices(list("abcdefghijklmnopqrstuvwxyz"), k=16)), "sid":"miui_unlocktool_client"}).run()
-        self.params[b"nonce"] = r["nonce"].encode("utf-8")
-        self.params[b"sid"] = b"miui_unlocktool_client"
-        return self
+        try:
+            r = RetrieveEncryptData("/api/v2/nonce", {"r":''.join(random.choices(list("abcdefghijklmnopqrstuvwxyz"), k=16)), "sid":"miui_unlocktool_client"}).run()
+            self.params[b"nonce"] = r["nonce"].encode("utf-8")
+            self.params[b"sid"] = b"miui_unlocktool_client"
+            return self
+        except Exception as e:
+            print(f"{cr}Failed to get nonce: {e}{cres}")
+            raise
+
     def __init__(self, path, params):
         self.path = path
         self.params = {k.encode("utf-8"): v.encode("utf-8") if isinstance(v, str) else b64encode(json.dumps(v).encode("utf-8")) if not isinstance(v, bytes) else v for k, v in params.items()}
+
     def getp(self, sep):
         return b'POST'+sep+self.path.encode("utf-8")+sep+b"&".join([k+b"="+v for k,v in self.params.items()])
+
     def run(self):
         self.params[b"sign"] = binascii.hexlify(hmac.digest(b'2tBeoEyJTunmWUGq7bQH2Abn0k2NhhurOaqBfyxCuLVgn4AVj7swcawe53uDUno', self.getp(b"\n"), "sha1"))
+        
+        # Encrypt parameters
         for k, v in self.params.items():
             self.params[k] = b64encode(AES.new(b64decode(ssecurity), AES.MODE_CBC, b"0102030405060708").encrypt(v + (16 - len(v) % 16) * bytes([16 - len(v) % 16])))
+        
         self.params[b"signature"] = b64encode(hashlib.sha1(self.getp(b"&")+b"&"+ssecurity.encode("utf-8")).digest())
-        return json.loads(b64decode((lambda s: s[:-s[-1]])(AES.new(b64decode(ssecurity), AES.MODE_CBC, b"0102030405060708").decrypt(b64decode(session.post(Url(scheme="https", host=url, path=self.path).url, data=self.params, headers=headers, cookies=cookies).text)))))
+        
+        try:
+            response_text = session.post(Url(scheme="https", host=url, path=self.path).url, data=self.params, headers=headers, cookies=session.cookies.get_dict()).text
+            
+            # Check if response is a plain error message
+            if not response_text or response_text.startswith('{'):
+                print(f"{cr}Server returned a plain text error:{cres}")
+                print(response_text)
+                raise Exception("Server error during API call.")
+
+            decrypted_bytes = AES.new(b64decode(ssecurity), AES.MODE_CBC, b"0102030405060708").decrypt(b64decode(response_text))
+            
+            # The lambda function removes PKCS#7 padding
+            padding_len = decrypted_bytes[-1]
+            if not (1 <= padding_len <= 16):
+                 raise ValueError("Invalid padding")
+            decrypted_data = decrypted_bytes[:-padding_len]
+            
+            final_decoded_text = b64decode(decrypted_data)
+            return json.loads(final_decoded_text)
+            
+        except (binascii.Error, ValueError, json.JSONDecodeError, IndexError) as e:
+            print(f"{cr}Failed to decrypt or parse server response.{cres}")
+            print(f"Error: {e}")
+            print(f"Raw response from server: {response_text[:200]}...") # Print first 200 chars
+            raise
+        except Exception as e:
+            print(f"{cr}An unexpected error occurred in RetrieveEncryptData.run(): {e}{cres}")
+            raise
 
 print(p_)
 
 c = RetrieveEncryptData("/api/v2/unlock/device/clear", {"data":{"product":product}}).add_nonce().run()
 cleanOrNot = c['cleanOrNot']
-
-if cleanOrNot == 1:
-    print(f"\n{crr}This device clears user data when it is unlocked{cres}\n")
-elif cleanOrNot == -1:
-    print(f"\n{cg}Unlocking the device does not clear user data{cres}\n") 
-
+if cleanOrNot == 1: print(f"\n{crr}This device clears user data when it is unlocked{cres}\n")
+elif cleanOrNot == -1: print(f"\n{cg}Unlocking the device does not clear user data{cres}\n") 
 print(Style.BRIGHT + Fore.CYAN + c['notice'] + cres)
 
-choice = input(f"\n{cg}Press Enter to Unlock\n{cgg}( or type q and press Enter to quit){cres}")
+choice = safe_input(f"\n{cg}Press Enter to Unlock\n{cgg}( or type q and press Enter to quit){cres}")
 if choice.lower() == 'q':
     print("\nExiting...\n")
     exit() 
 
 print(p_)
 
-r = RetrieveEncryptData("/api/v3/ahaUnlock", {"appId":"1", "data":{"clientId":"2", "clientVersion":"7.6.727.43", "language":"en", "operate":"unlock", "pcId":hashlib.md5(wb_id.encode("utf-8")).hexdigest(), "product":product, "region":"","deviceInfo":{"boardVersion":"","product":product, "socId":"","deviceName":""}, "deviceToken":token}}).add_nonce().run()
+r = RetrieveEncryptData("/api/v3/ahaUnlock", {"appId":"1", "data":{"clientId":"2", "clientVersion":"7.6.727.43", "language":"en", "operate":"unlock", "pcId":hashlib.md5(data['wb_id'].encode("utf-8")).hexdigest(), "product":product, "region":"","deviceInfo":{"boardVersion":"","product":product, "socId":"","deviceName":""}, "deviceToken":token}}).add_nonce().run()
 
 if "code" in r and r["code"] == 0:
     ed = io.BytesIO(bytes.fromhex(r["encryptData"]))

@@ -12,18 +12,28 @@
   <a href="https://t.me/Offici5l_Channel"><img src="https://img.shields.io/badge/Telegram-%230077B5?style=flat&logo=telegram&logoColor=white" alt="Telegram Channel" /></a>
   
 </div>
+# MiUnlockTool
 
-<h1>Installation:</h1>
+A Python script to unlock Xiaomi devices using browser session authentication.
 
-<h2>For Windows, Linux, MacOS :</h2>
-<ol>
-  <li>Install Python3</li>
-  <li>Download <a href="https://github.com/offici5l/MiUnlockTool/releases/latest/download/MiUnlockTool.py">MiUnlockTool</a> and run it</li>
-</ol>
+## Requirements
 
-<h2>For Android:</h2>
-<ol>
-  <li>Install <a href="https://github.com/termux/termux-app/releases/latest">Termux</a> & <a href="https://github.com/termux/termux-api/releases/latest">Termux-API</a></li>
-  <li>From Termux command line run:</li>
-</ol>
-<pre><code>curl -sS https://raw.githubusercontent.com/offici5l/MiUnlockTool/main/.install | bash</code></pre>
+- Python 3.6 or higher
+- Platform-tools (fastboot) - automatically downloaded if not found
+- Xiaomi account
+- Device in bootloader/fastboot mode
+
+
+### Standard Installation
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/offici5l/MiUnlockTool.git
+   cd MiUnlockTool
+2. using venv environtment 
+  ``` bash
+  python -m venv venv && source venv/bin/activate
+  python -m pip install -r requirements.txt
+  python MiUnlockTool.py
+
+### Follow the Step, Good Luck
