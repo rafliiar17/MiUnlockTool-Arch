@@ -28,12 +28,16 @@ A Python script to unlock Xiaomi devices using browser session authentication.
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/offici5l/MiUnlockTool.git
+   git clone https://github.com/rafliiar17/MiUnlockTool-Arch
    cd MiUnlockTool
 2. using venv environtment 
   ``` bash
   python -m venv venv && source venv/bin/activate
   python -m pip install -r requirements.txt
+  chmox +x MiUnlockTool.py
   python MiUnlockTool.py
 
 ### Follow the Step, Good Luck
+
+## ERROR CODES 
+https://rafliiar17.github.io/MiUnlockTool-Arch/docs/error_codes.html
