@@ -114,7 +114,7 @@ This project is licensed under the Apache License 2.0 - see the [LICENSE](./LICE
 
 <div align="center">
 
-  [![Telegram Channel](https://img.shields.io/badge/Join-Telegram_Channel-0088cc?style=for-the-badge&logo=telegram&logoColor=white)](https://t.me/Offici5l_Channel)
+  [![Telegram Channel](https://img.shields.io/badge/Join-Telegram_Channel-0088cc?style=for-the-badge&logo=telegram&logoColor=white)](https://t.me/Miunlock_Arch)
   [![GitHub Issues](https://img.shields.io/badge/Report-Issues-red?style=for-the-badge&logo=github&logoColor=white)](https://github.com/rafliiar17/MiUnlockTool-Arch/issues)
 
 </div>
